@@ -1,7 +1,22 @@
 {
-    "1": {
+    "0":
+    {
         "url": "",
-        "folder": "any_player",
-        "type": "ANY"
+        "folder": "industrial_consumer_1",
+        "type": "industrial_consumer"
+    },
+    "1":
+    {
+        "url": "",
+        "folder": "solar_farm_1",
+        "type": "solar_farm"
+    },
+    "2":
+    {
+        "url": "",
+        "folder": "charging_station_1",
+        "type": "charging_station"
     }
+
+
 }
