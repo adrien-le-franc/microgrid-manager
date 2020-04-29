@@ -18,35 +18,35 @@ manager.simulate(1000,name)
 
 ##Données par joueurs
 
-loads=np.load(name+"/data_visualize/load_simulation.npy") 
+loads=np.load(name+"/data_visualize/load_simulation.npy",allow_pickle=True) 
 # keys : players  -- objects : nb_simul*nb_time_steps
 
-bills=np.load(name+"/data_visualize/bill_simulation.npy") 
+bills=np.load(name+"/data_visualize/bill_simulation.npy",allow_pickle=True)
 # keys : players  -- objects : nb_simul*nb_time_steps
 
-batteries_IC_SF=np.load(name+"/data_visualize/battery_stock_simulation_IC_SF.npy") 
+batteries_IC_SF=np.load(name+"/data_visualize/battery_stock_simulation_IC_SF.npy",allow_pickle=True)
 # keys : players (except CS)  -- objects : nb_simul*(nb_time_steps+1)
 
-batteries_CS=np.load(name+"/data_visualize/battery_stock_simulation_CS.npy") 
+batteries_CS=np.load(name+"/data_visualize/battery_stock_simulation_CS.npy",allow_pickle=True) 
 # keys : players (only CS) -- objects : nb_simul*nb_cars*(nb_time_steps+1)
 
-scenarios_IC_SF=np.load(name+"/data_visualize/scenario_simulation_IC_SF.npy") 
+scenarios_IC_SF=np.load(name+"/data_visualize/scenario_simulation_IC_SF.npy",allow_pickle=True) 
 # keys : players (except CS)  -- objects : nb_simul*nb_time_steps
 
-scenarios_CS=np.load(name+"/data_visualize/scenario_simulation_CS.npy") 
+scenarios_CS=np.load(name+"/data_visualize/scenario_simulation_CS.npy",allow_pickle=True) 
 # keys : players (only CS)  -- objects : nb_simul*2(departures/arrivals)*nb_cars
 
 
 
 ##Données communes
 
-imbalances=np.load(name+"/data_visualize/imbalance_simulation.npy")
+imbalances=np.load(name+"/data_visualize/imbalance_simulation.npy",allow_pickle=True)
 # keys : demand/supply  -- objects : nb_simul*nb_time_steps
 
-grid_load=np.load(name+"/data_visualize/grid_load_simulation.npy")
+grid_load=np.load(name+"/data_visualize/grid_load_simulation.npy",allow_pickle=True)
 # keys : demand/supply  -- objects : nb_simul*nb_time_steps
 
-prices=np.load(name+"/data_visualize/price_simulation.npy")
+prices=np.load(name+"/data_visualize/price_simulation.npy",allow_pickle=True)
 # keys : internal/external_purchase/external_sale  -- objects : nb_simul*nb_time_steps
 
 
@@ -75,15 +75,15 @@ vis.plotCS(batteries_CS[0],'kWh','Average battery level for player','Level', 'ba
 
 #affichage scenario IC_SF"
 
-vis.plottotal(scenarios_IC_SF[0],'kW','Parameter for player','Sunlight/Production','parametre',name)
+vis.plottotal(scenarios_IC_SF[0],'kW','Parameter for player','Sunlight/Demand','parametre',name)
 
 #affichage imbalances"
 
-vis.plot_2(imbalances[0],'%','Imbalances','figure_imbalances.png',name)
+vis.plot_2(imbalances[0],'%','Imbalance between demand and supply on the grid','figure_imbalances.png',name)
 
 #affichage grid_load"
 
-vis.plot_2(grid_load[0],'kW','Economic balance','figure_grid_load.png',name)
+vis.plot_2(grid_load[0],'kW','Internal energy balance','figure_grid_load.png',name)
 
 #affichage prices"
 
