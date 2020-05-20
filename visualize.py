@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 plt.switch_backend('agg') # seems necessary on linux, comment on windows
 import numpy as np
 import random as rd
+from openpyxl import Workbook
 
 xticks=[0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50] 
     
@@ -96,7 +97,7 @@ def plot_1bis(Tab,unite,titre, labl,joueur,cars, path, name_simulation):
  
 
 
-def plot_2(Tab,unite,titre,path, name_simulation):
+def plot_2(Tab,unite,titre,path,label1,label2, name_simulation):
     
     "Pour grid_load et imbalances"
     
@@ -118,8 +119,8 @@ def plot_2(Tab,unite,titre,path, name_simulation):
     width=0.5
 
     fig, ax = plt.subplots()
-    rects1 = ax.bar(ind - width/2, demand, width, label='demand',yerr=Edemand, color='r')
-    rects2 = ax.bar(ind + width/2, supply, width, label='supply',yerr=Esupply, color='b')
+    rects1 = ax.bar(ind - width/2, demand, width, label=label1,yerr=Edemand, color='r')
+    rects2 = ax.bar(ind + width/2, supply, width, label=label2,yerr=Esupply, color='b')
 
     
     ax.set_ylabel(unite)
@@ -181,6 +182,67 @@ def plot_3(Tab,unite,titre,path, name_simulation):
     
     #plt.show()
     plt.close()
+    
+def plot_4(dico, name_simulation):
+    
+    "mean bills"
+    wb = Workbook()
+    ws = wb.active
+    
+    bills = []
+    names = []
+        
+    for name,bill in dico.items():
+        bills.append(bill)
+        names.append(name)
+        
+        
+        print(name+" : "+str(bill))
+    ws.append(names)
+    ws.append(bills)
+    
+    wb.save(name_simulation+"/plot/score.xlsx")
+
+def plot_5(Tab,unite,titre,path, name_simulation):
+    
+        
+    "Pour prices"
+    
+    T=Tab['purchase'].shape[1]
+    N=Tab['purchase'].shape[0]
+    purchase=np.zeros(T)
+    sale=np.zeros(T)
+    E_purch=np.zeros(T)
+    E_sale=np.zeros(T)
+    
+    for t in range(T):
+        purchase[t]=np.mean(Tab['purchase'][:,t])
+        sale[t]=np.mean(Tab['sale'][:,t])
+        E_purch[t]=np.std(Tab['purchase'][:,t])
+        E_sale[t]=np.std(Tab['sale'][:,t])
+        
+        
+    ind=np.arange(T)
+    width=0.5
+
+    fig, ax = plt.subplots()
+    
+    p1=ax.plot(ind,purchase, label='purchase', color='r')
+    p2=ax.plot(ind,sale, label='sale',color='b')
+    
+    ax.set_ylabel(unite)
+    ax.set_title(titre)
+    ax.set_xlabel('time')
+    
+    ax.legend(loc='upper left')
+    ax.autoscale(True,axis='y')
+    ax.set_xticks(ticks=xticks)
+
+
+    plt.savefig(name_simulation+"/plot/"+path)
+    
+    #plt.show()
+    plt.close()
   
 
 def plottotal(dico, unite, titre, labl, path_to_data,name_simulation):
@@ -190,10 +252,9 @@ def plottotal(dico, unite, titre, labl, path_to_data,name_simulation):
 
 
 def plotCS(dico,unite,titre,labl,path,name_simulation):
-    h=['1','2','3','4']
     for cle,objet in dico.items():
         for cars in range (4):
-            plot_1bis(dico[cle][:,cars,:],unite,titre,labl,cle,h[cars],path + "_" + cle +"_voiture_"+h[cars]+".png",name_simulation)
+            plot_1bis(dico[cle][:,cars,:],unite,titre,labl,cle,str(cars+1),path + "_" + cle +"_voiture_"+str(cars+1)+".png",name_simulation)
         
 
 

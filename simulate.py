@@ -17,7 +17,8 @@ class Manager():
         self.nb_players = {"charging_station":0,"industrial_consumer":0,"solar_farm":0}
 
         self.players = self.initialize_players(path_to_player_file)
-        self.prices = self.initialize_prices(path_to_price_file)
+        self.mean_prices = self.initialize_prices(path_to_price_file)
+        self.real_prices={"purchase": np.zeros(self.horizon),"sale": np.zeros(self.horizon) }
         self.data_scenario=self.initialize_data_scenario()
         
         self.imbalance=np.zeros((2,self.horizon))
@@ -50,9 +51,9 @@ class Manager():
     def initialize_prices(self, path_to_price_file):
         """initialize daily prices"""
 
-        prices=np.loadtxt(path_to_price_file) #internal trade, external purchase, external sale
-        dico_prices={"internal" : prices[0, :], "external_purchase" : prices[1, :], 
-            "external_sale" : prices[2, :]}
+        mean_prices=np.loadtxt(path_to_price_file) #internal trade, external purchase, external sale
+        dico_prices={"internal" : mean_prices[0, :], "external_purchase" : mean_prices[1, :], 
+            "external_sale" : mean_prices[2, :]}
 
         return dico_prices
 
@@ -145,73 +146,57 @@ class Manager():
         total_load=demand-supply    #total load of the grid
         internal_exchange=min(demand,supply)  #what is going to be exchange on the grid
         external_exchange=abs(total_load)   #the quantity of energy in surplus on the grid
-        internal_price=self.prices["internal"][time]
-        external_selling_price=self.prices["external_sale"][time]
-        external_purchasing_price=self.prices["external_purchase"][time]
-
-        if total_load>=0:  #if there is not enough energy on the grid
-            
+        internal_price=self.mean_prices["internal"][time]
+        external_selling_price=self.mean_prices["external_sale"][time]
+        external_purchasing_price=self.mean_prices["external_purchase"][time]
+        
+        
+        if demand==0:
+            proportion_internal_demand=1
+        else:
             proportion_internal_demand=internal_exchange/demand
-            proportion_internal_supply=1
             
-            self.imbalance[0][time] = proportion_internal_demand
-            self.imbalance[1][time] = proportion_internal_supply
+        if supply==0:
+            proportion_internal_supply=1
+        else:
+            proportion_internal_supply=internal_exchange/supply
+        
+        purchase_price=internal_price*proportion_internal_demand + external_purchasing_price*(1-proportion_internal_demand)
+        sale_price=internal_price*proportion_internal_supply + external_selling_price*(1-proportion_internal_supply)
+        
+        self.imbalance[0][time] = proportion_internal_demand
+        self.imbalance[1][time] = proportion_internal_supply
+        
+        self.real_prices['purchase'][time]=purchase_price
+        self.real_prices['sale'][time]=sale_price
+        
+        for idx,dico in self.players.items():
+            
+            player = dico["class"]
 
-            for idx,dico in self.players.items():
+            load=player.load[time]
+
+            if load>0: #if the player needs energy
                 
-                player = dico["class"]
+                cost= purchase_price*load*self.dt
+                        #the players pays in proportion on and off the grid for his demand
+                player.bill[time] += cost
 
-                load=player.load[time]
+            elif load<0: #if the player supply energy
 
-                if load>0: #if the player needs energy
-
-                    cost= (internal_price*(proportion_internal_demand) + external_purchasing_price*(1-proportion_internal_demand))*load*self.dt
-                            #the players pays in proportion on and off the grid for his demand
-                    player.bill[time] += cost
-
-                elif load<0: #if the player supply energy
-
-                    revenue=internal_price*load*self.dt #there is enough demand of engery on the grid
-                    player.bill[time] += revenue
+                revenue=sale_price*load*self.dt #there is enough demand of engery on the grid
+                
+                player.bill[time] += revenue
         
 
-        else :   #if the offer is too consequent on the grid
-            
-            proportion_internal_demand=1
-            proportion_internal_supply=internal_exchange/supply
-            self.imbalance[0][time] = proportion_internal_demand
-            self.imbalance[1][time] = proportion_internal_supply
-            
-            for idx,dico in self.players.items():
-            
-                player = dico["class"]
-                
-                
-                load=player.load[time]
-
-                if load>0: #if the player needs energy
-
-                    cost=internal_price*load*self.dt  #there is enough energy produced on the grid
-                    player.bill[time] += cost
-
-                elif load<0:  #if the player supply energy
-
-                    revenue= (internal_price*(proportion_internal_supply) + external_selling_price*(1-proportion_internal_supply))*load*self.dt
-                            #the players pays in proportion of his supply
-                    player.bill[time] += revenue
-    
 
 
-
-## Transmit data to the player
+# ## Transmit data to the player
 
     def give_info(self,t):
         
-        
     #the manager informs the price of the last slot
-        prices = {"internal" : self.prices["internal"][t],"external_sale" : self.prices["external_sale"][t],"external_purchase" : self.prices["external_purchase"][t]}
-            
-            
+        prices = {"purchase" : self.real_prices["purchase"][t],"sale" : self.real_prices["sale"][t]}
             
         for idx,dico in self.players.items():
             
@@ -219,16 +204,6 @@ class Manager():
             
             if dico["type"] == "charging_station":
                 
-                # departure=[0]*4  #departure[i]=1 if the car i leaves the station at t
-                # arrival=[0]*4    #arrival[i]=1 if the car i arrives in the station at t
-                # 
-                # for i in range(4):
-                #     if t==self.scenario[dico["name"]][0,i]:
-                #         departure[i]=1
-                #     if t==self.scenario[dico["name"]][1,i]:
-                #         arrival[i]=1
-                # 
-                # data_to_player = {"departures":departure , "arrivals":arrival}
                 
                 data_to_player = 0
                 
@@ -237,7 +212,7 @@ class Manager():
                 
                 data_to_player = self.scenario[dico["name"]][t]
             
-            player.observe(t,data_to_player,prices,{"proportion_internal_demand": self.imbalance[0][t],"proportion_internal_supply":self.imbalance[1][t]})
+            player.observe(t,data_to_player,prices,{"purchase_cover": self.imbalance[0][t],"sale_cover":self.imbalance[1][t]})
            
 
 
@@ -259,6 +234,8 @@ class Manager():
         #reset the attributes of the manager
         self.imbalance=np.zeros((2,self.horizon))
         self.scenario={}
+        self.grid_load={"demand": np.zeros(self.horizon), "supply": np.zeros(self.horizon) }
+        self.real_prices={'purchase': np.zeros(self.horizon),'sale': np.zeros(self.horizon) }
         
         for idx,dico in self.players.items(): #reset the attributes of thes players
             
@@ -292,12 +269,16 @@ class Manager():
         tab_bill = {}
         tab_battery_stock_IC_SF = {}
         tab_battery_stock_CS = {}
+        mean_bill = {}
+        tab_score={}
+        score={}
         
         for idx,dico in self.players.items():
             
             name = dico["name"]
             tab_load[name] = np.zeros((nb_simulation,self.horizon))
             tab_bill[name] = np.zeros((nb_simulation,self.horizon))
+            tab_score[name]=np.zeros(nb_simulation)
             
             if dico["type"]=="charging_station":
                 tab_scenario_CS[name] = np.zeros((nb_simulation,2,4))
@@ -309,6 +290,8 @@ class Manager():
         
         
         tab_price={"internal" : np.zeros((nb_simulation,self.horizon)), "external_purchase" : np.zeros((nb_simulation,self.horizon)), "external_sale" : np.zeros((nb_simulation,self.horizon))}
+        
+        tab_real_price={'purchase': np.zeros((nb_simulation,self.horizon)),'sale':np.zeros((nb_simulation,self.horizon))}
         
         
         tab_grid_load = {"demand" : np.zeros((nb_simulation,self.horizon)) , "supply" : np.zeros((nb_simulation,self.horizon))}
@@ -329,10 +312,12 @@ class Manager():
             tab_imbalance["demand"][i] = self.imbalance[0]
             tab_imbalance["supply"][i] = self.imbalance[1]
             
+            tab_real_price['sale'][i]=self.real_prices['sale']
+            tab_real_price['purchase'][i]=self.real_prices['purchase']
                 
             
             for type in ["internal","external_purchase","external_sale"]:
-                tab_price[type][i]=self.prices[type]
+                tab_price[type][i]=self.mean_prices[type]
 
             
             for idx,dico in self.players.items():
@@ -354,17 +339,36 @@ class Manager():
                     new_bat = np.transpose(new_bat)
                     
                     tab_battery_stock_CS[name][i] = new_bat
-                    
+                    tab_score[name][i]=np.sum(tab_bill[name][i])-16*np.mean(self.real_prices["purchase"]) 
+                    #we substract the neutral bill to sustain
                 else:
                     tab_scenario_IC_SF[name][i] = self.scenario[name]
                     
                     
                     tab_battery_stock_IC_SF[name][i] = player.battery_stock
                     
+                    if dico["type"]=="solar_farm":
+                        tab_score[name][i]=np.sum(tab_bill[name][i])+self.dt*np.dot(np.array(player.sun),self.real_prices['sale'])
+                        
+                    else:
+                        tab_score[name][i]=np.sum(tab_bill[name][i])-self.dt*np.dot(np.array(player.demand),self.real_prices['purchase'])
+                    
+                        
+                        
+                    
                 
             
-            
             self.reset()
+            
+        for idx,dico in self.players.items():
+            name = dico["name"]
+            sum=np.zeros(nb_simulation)  
+            for j in range(nb_simulation):
+                sum[j]=np.sum(tab_bill[name][j,:])
+            
+            mean_bill[name]=np.mean(sum)
+            score[name]=np.mean(tab_score[name])
+            
             
             
         np.save(simulation_name+"/data_visualize/imbalance_simulation",np.array([tab_imbalance]))
@@ -376,4 +380,6 @@ class Manager():
         np.save(simulation_name+"/data_visualize/scenario_simulation_IC_SF",np.array([tab_scenario_IC_SF]))
         np.save(simulation_name+"/data_visualize/scenario_simulation_CS",np.array([tab_scenario_CS]))
         np.save(simulation_name+"/data_visualize/grid_load_simulation",np.array([tab_grid_load]))
-        
+        np.save(simulation_name+"/data_visualize/mean_bill_simulation",np.array([mean_bill]))
+        np.save(simulation_name+"/data_visualize/real_price_simulation",np.array([tab_real_price]))
+        np.save(simulation_name+"/data_visualize/score_simulation",np.array([score]))
