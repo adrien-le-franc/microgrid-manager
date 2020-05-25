@@ -136,7 +136,44 @@ def plot_2(Tab,unite,titre,path,label1,label2, name_simulation):
     
     #plt.show()
     plt.close()
+
+def plot_2_bis(Tab,critical_load,unite,titre,path,label1,label2,name_simulation):
     
+    "Pour grid_load et imbalances"
+    
+    T=Tab['demand'].shape[1]
+    N=Tab['demand'].shape[0]
+    total_load=np.zeros(T)
+    critical_load_plus=critical_load*np.ones(T)
+    critical_load_minus=-critical_load*np.ones(T)
+    E=np.zeros(T)
+    for t in range(T):
+        total_load[t]=np.mean(Tab['demand'][:,t]-Tab['supply'][:,t])
+        E[t]=np.std(Tab['demand'][:,t]-Tab['supply'][:,t])
+        
+        
+        
+    ind=np.arange(T)
+    width=0.5
+
+    fig, ax = plt.subplots()
+    rects = ax.bar(ind, total_load, width, label=label1,yerr=E, color='g')
+    ax.plot(critical_load_plus,label=label2,color='r')
+    ax.plot(critical_load_minus,color='r')
+    
+    ax.set_ylabel(unite)
+    ax.set_xlabel('time')
+    ax.set_title(titre)
+    ax.legend()
+    ax.autoscale(True,axis='y')
+    ax.set_xticks(ticks=xticks)
+
+    fig.tight_layout()
+
+    plt.savefig(name_simulation+"/plot/"+path)
+    
+    #plt.show()
+    plt.close()    
 def plot_3(Tab,unite,titre,path, name_simulation):
     
         
@@ -183,7 +220,7 @@ def plot_3(Tab,unite,titre,path, name_simulation):
     #plt.show()
     plt.close()
     
-def plot_4(dico, name_simulation):
+def plot_4(dico, name_plot,name_simulation):
     
     "mean bills"
     wb = Workbook()
@@ -201,7 +238,7 @@ def plot_4(dico, name_simulation):
     ws.append(names)
     ws.append(bills)
     
-    wb.save(name_simulation+"/plot/score.xlsx")
+    wb.save(name_simulation+"/plot/"+name_plot+".xlsx")
 
 def plot_5(Tab,unite,titre,path, name_simulation):
     
